@@ -6,7 +6,28 @@ effect module WebSocket.Explicit
         , send
         )
 
-{-| Explicit websocket handling
+{-| Explicit websocket handling.
+
+
+# Example
+
+    type alias Model =
+        { websocket : Maybe WebSocket
+        }
+
+    type Msg
+        = WSOpen (Result String WebSocket)
+        | WSMessage String
+        | WSClose String
+        | WSSendingError String String
+
+    update : Msg -> Model -> Model
+    update msg model =
+        case msg of
+            WSOpen (Ok ws) ->
+                ( { model | websocket = ws }, Cmd.none )
+            WSOpen (Err err) ->
+                ( model, Time.after Connect
 
 
 # Basics
@@ -20,7 +41,7 @@ import Task
 import WebSocket.LowLevel as WSL
 
 
-{-| Opaque websocket handle
+{-| An opaque websocket handle.
 -}
 type WebSocket
     = WS WSL.WebSocket
@@ -54,11 +75,11 @@ onEffects r cmds () =
 dealWithCmd : Platform.Router msg () -> WSCmd msg -> Task.Task Never ()
 dealWithCmd r cmd =
     case cmd of
-        Open url onOpen onMesg onClose ->
+        Open url onOpen onMessage onClose ->
             let
                 cbMessage : WSL.WebSocket -> String -> Task.Task Never ()
                 cbMessage ws payload =
-                    Platform.sendToApp r (onMesg payload)
+                    Platform.sendToApp r (onMessage payload)
 
                 cbClose : { code : Int, reason : String, wasClean : Bool } -> Task.Task Never ()
                 cbClose details =
@@ -88,14 +109,47 @@ onSelfMsg router msg () =
     Task.succeed ()
 
 
-{-| Open a websocket
+{-| Open a websocket.
+
+You pass the websocket URL and say how you want to receive messages.
+
+    type Msg
+        = ...
+        | WSOpen (Result String WebSocket)
+        | WSMessage String
+        | WSClose String
+
+    open "ws://example.com/"
+        { onOpen = WSOpen
+        , onMessage = WSMessage
+        , onClose = WSClrose
+        }
+
 -}
-open : String -> (Result String WebSocket -> msg) -> (String -> msg) -> (String -> msg) -> Cmd msg
-open url onOpen onMesg onClose =
-    command <| Open url onOpen onMesg onClose
+open :
+    String
+    ->
+        { onOpen : Result String WebSocket -> msg
+        , onMessage : String -> msg
+        , onClose : String -> msg
+        }
+    -> Cmd msg
+open url handlers =
+    command <| Open url handlers.onOpen handlers.onMessage handlers.onClose
 
 
-{-| Send a message down a websocket
+{-| Send a message down a websocket.
+
+You pass a websocket handle that you got through `open` and the payload.
+In case there is an error sending the data, the error will be sent to your
+app using the error handler argument.
+
+    type Msg
+        = ...
+        | WSSendingError String
+
+    send ws "{\"greeting\": \"yo!\"}" WSSendingError
+
 -}
 send : WebSocket -> String -> (String -> msg) -> Cmd msg
 send (WS ws) msg onError =
