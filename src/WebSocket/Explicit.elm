@@ -6,10 +6,22 @@ effect module WebSocket.Explicit
         , send
         )
 
+{-| Explicit websocket handling
+
+
+# Basics
+
+@docs WebSocket
+@docs open, send
+
+-}
+
 import Task
 import WebSocket.LowLevel as WSL
 
 
+{-| Opaque websocket handle
+-}
 type WebSocket
     = WS WSL.WebSocket
 
@@ -76,11 +88,15 @@ onSelfMsg router msg () =
     Task.succeed ()
 
 
+{-| Open a websocket
+-}
 open : String -> (Result String WebSocket -> msg) -> (String -> msg) -> (String -> msg) -> Cmd msg
 open url onOpen onMesg onClose =
     command <| Open url onOpen onMesg onClose
 
 
+{-| Send a message down a websocket
+-}
 send : WebSocket -> String -> (String -> msg) -> Cmd msg
 send (WS ws) msg onError =
     command <| Send ws msg onError
