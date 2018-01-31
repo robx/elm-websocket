@@ -1,4 +1,4 @@
-effect module WebSocket
+effect module WebSocket.Explicit
     where { command = WSCmd }
     exposing
         ( WebSocket
